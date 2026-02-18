@@ -5,8 +5,8 @@ def project_name = "ojt-kfegarido-terraform-provision"
 
 
 ojtFegaridoTerraform(
-    gitbranch : "$(gitbranch)",
-    project_name : "$(project_name)"
+    gitbranch : "${gitbranch}",
+    project_name : "${project_name}"
 )
  
 
