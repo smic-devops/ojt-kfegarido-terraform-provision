@@ -2,73 +2,10 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
-resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_support   = true
-  enable_dns_hostnames = true
-  tags                 = { Name = "main-vpc" }
-}
-
-resource "aws_internet_gateway" "gw" {
-  vpc_id = aws_vpc.main.id
-  tags   = { Name = "main-igw" }
-}
-
-############### SUBNETS
-
-resource "aws_subnet" "public" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.0.0/24"
-  availability_zone       = data.aws_availability_zones.available.names[0]
-  map_public_ip_on_launch = true
-  tags                    = { Name = "public-a" }
-}
-
-resource "aws_subnet" "co_public" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = data.aws_availability_zones.available.names[1]
-  map_public_ip_on_launch = true
-  tags                    = { Name = "public-b" }
-}
-
-resource "aws_subnet" "private" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.2.0/24"
-  availability_zone = data.aws_availability_zones.available.names[0]
-  tags              = { Name = "private-a" }
-}
-
-####### PUBLIC ROUTES & ALB LISTENER
-
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
-  tags   = { Name = "rt-public" }
-}
-
-resource "aws_route" "public_default" {
-  route_table_id         = aws_route_table.public.id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.gw.id
-}
-
-resource "aws_route_table_association" "public_a" {
-  subnet_id      = aws_subnet.public.id
-  route_table_id = aws_route_table.public.id
-}
-
-resource "aws_route_table_association" "public_b" {
-  subnet_id      = aws_subnet.co_public.id
-  route_table_id = aws_route_table.public.id
-}
-
-############## ALB & SG
-
 resource "aws_security_group" "alb_sg" {
-  name        = "alb_sg"
+  name        = "ojt-kfegarido-alb-sg"
   description = "ALB SG"
-  vpc_id      = aws_vpc.main.id
-  tags        = { Name = "alb_sg" }
+  vpc_id      = var.vpc_id
 }
 
 # Internet to ALB
@@ -96,19 +33,19 @@ resource "aws_vpc_security_group_egress_rule" "alb_to_app" {
 }
 
 resource "aws_lb" "test" {
-  name               = "test-lb-tf"
+  name               = "ojt-kfegarido-alb"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb_sg.id]
-  subnets            = [aws_subnet.public.id, aws_subnet.co_public.id]
+  subnets            = [var.public_subnet1, var.public_subnet2]
 }
 
 # Target group
 resource "aws_lb_target_group" "app_tg" {
-  name     = "app-tg"
+  name     = "ojt-kfegarido-app-tg"
   port     = 80
   protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
+  vpc_id   = var.vpc_id
 
   health_check {
     path                = "/"
@@ -135,10 +72,9 @@ resource "aws_lb_listener" "http" {
 ########### EC2 Instance & SG
 
 resource "aws_security_group" "ec2_sg" {
-  name        = "ec2_sg"
+  name        = "ojt-kfegarido-ec2-sg"
   description = "EC2 app SG"
-  vpc_id      = aws_vpc.main.id
-  tags        = { Name = "ec2_sg" }
+  vpc_id      = var.vpc_id
 }
 
 resource "aws_vpc_security_group_ingress_rule" "app_from_alb" {
@@ -158,8 +94,12 @@ resource "aws_vpc_security_group_egress_rule" "ec2_egress_all" {
 resource "aws_instance" "web" {
   ami                    = var.ami_type
   instance_type          = var.instance_type
-  subnet_id              = aws_subnet.private.id
+  subnet_id              = var.private_subnet1
   vpc_security_group_ids = [aws_security_group.ec2_sg.id]
+
+  tags = {
+    Name = "ojt-kfegarido-ec2"
+  }
 
 }
 

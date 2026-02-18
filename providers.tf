@@ -11,10 +11,19 @@ terraform {
     http = {
       source  = "hashicorp/http"
       version = "~> 3.4"
+
+
     }
   }
 }
 
 provider "aws" {
-  region = "ap-southeast-2"
+  region = "ap-southeast-1"
+
+  default_tags {
+    tags = {
+      Environment = "Sandbox"
+    }
+  }
 }
+
