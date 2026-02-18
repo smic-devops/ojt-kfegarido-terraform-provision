@@ -3,13 +3,13 @@ variable "region" {
   type        = string
   default     = "ap-southeast-2"
 }
- 
+
 variable "instance_type" {
   description = "EC2 instance type"
   type        = string
   default     = "t3.micro"
 }
- 
+
 variable "ami_type" {
   type        = string
   description = "Ubuntu AMI ID"
